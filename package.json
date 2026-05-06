@@ -1,0 +1,26 @@
+{
+  "name": "astraveil",
+  "version": "2.0.0",
+  "description": "Space & Defence Situational Awareness Platform — Full-Stack | DRDO Internship Showcase",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently --names \"FRONTEND,BACKEND\" --prefix-colors \"cyan,yellow\" \"vite\" \"node server/index.js\"",
+    "dev:frontend": "vite",
+    "dev:backend": "node server/index.js",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-fetch": "^3.3.2",
+    "sql.js": "^1.11.0",
+    "ws": "^8.17.0"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0"
+  }
+}

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASTRAVEIL — Space & Defence Situational Awareness</title>
+  <meta name="description" content="Unified Space-Defence Situational Awareness Platform — Real-time satellite tracking, debris collision analysis, and ballistic threat intelligence." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&family=Exo+2:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+  <!-- Three.js via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Globe.gl -->
+  <script src="https://unpkg.com/globe.gl@2.26.5/dist/globe.gl.min.js"></script>
+
+  <!-- Satellite.js for TLE propagation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/4.1.3/satellite.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       LOADING SCREEN
+  ═══════════════════════════════════════════ -->
+  <div id="loading-screen">
+    <div class="loading-content">
+      <div class="loading-logo">
+        <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="35" stroke="#00f5ff" stroke-width="1" stroke-dasharray="4 4" class="spin-slow"/>
+          <circle cx="40" cy="40" r="22" stroke="#00f5ff" stroke-width="1.5" opacity="0.6"/>
+          <circle cx="40" cy="40" r="6" fill="#00f5ff"/>
+          <ellipse cx="40" cy="40" rx="35" ry="12" stroke="#00f5ff" stroke-width="0.8" opacity="0.4" transform="rotate(-20 40 40)"/>
+        </svg>
+      </div>
+      <div class="loading-text">
+        <span class="loading-label">INITIALIZING</span>
+        <span class="loading-title">ASTRAVEIL</span>
+        <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
+        <span class="loading-status" id="loading-status">LOADING ORBITAL DATABASE...</span>
+      </div>
+    </div>
+    <div class="loading-grid"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCANLINE OVERLAY
+  ═══════════════════════════════════════════ -->
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- ═══════════════════════════════════════════
+       NAVIGATION
+  ═══════════════════════════════════════════ -->
+  <nav id="navbar">
+    <div class="nav-brand">
+      <svg class="nav-logo" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="13" stroke="#00f5ff" stroke-width="1" stroke-dasharray="3 3"/>
+        <circle cx="16" cy="16" r="4" fill="#00f5ff"/>
+        <ellipse cx="16" cy="16" rx="13" ry="5" stroke="#00f5ff" stroke-width="0.8" opacity="0.5" transform="rotate(-20 16 16)"/>
+      </svg>
+      <span class="nav-title">ASTRAVEIL</span>
+      <span class="nav-version">v2.4.1 // CLASSIFIED</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#orbital" class="nav-link" data-section="orbital">ORBITAL</a></li>
+      <li><a href="#debris" class="nav-link" data-section="debris">DEBRIS</a></li>
+      <li><a href="#trajectory" class="nav-link" data-section="trajectory">TRAJECTORY</a></li>
+      <li><a href="#mission" class="nav-link" data-section="mission">MISSION HUD</a></li>
+    </ul>
+    <div class="nav-status">
+      <span class="status-dot pulse"></span>
+      <span class="status-text">LIVE</span>
+      <span class="nav-time" id="nav-clock">--:--:-- UTC</span>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 1 — HERO
+  ═══════════════════════════════════════════ -->
+  <section id="hero">
+    <canvas id="hero-canvas"></canvas>
+
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        DRDO · ISRO INTEGRATED PLATFORM · RESTRICTED ACCESS
+      </div>
+
+      <h1 class="hero-title">
+        <span class="title-line" data-text="ASTRAVEIL">ASTRAVEIL</span>
+        <span class="title-sub">UNIFIED SPACE-DEFENCE SITUATIONAL AWARENESS</span>
+      </h1>
+
+      <p class="hero-desc">
+        Real-time orbital intelligence. Debris collision prediction. Ballistic threat analysis.<br>
+        Designed for India's integrated space security architecture.
+      </p>
+
+      <div class="hero-stats">
+        <div class="stat-item">
+          <span class="stat-value" data-target="27000">0</span>
+          <span class="stat-label">OBJECTS TRACKED</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-value" data-target="842">0</span>
+          <span class="stat-label">ACTIVE SATELLITES</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-value" data-target="99">0</span>
+          <span class="stat-label">% UPTIME</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-value" data-target="7">0</span>
+          <span class="stat-label">THREAT ALERTS</span>
+        </div>
+      </div>
+
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="scrollToSection('orbital')">
+          <span>ENTER PLATFORM</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+        <button class="btn-ghost" onclick="openModal('about-modal')">MISSION BRIEF</button>
+      </div>
+    </div>
+
+    <!-- Floating HUD elements -->
+    <div class="hud-corner hud-tl">
+      <div class="hud-line"></div>
+      <span>GEO SYNC: NOMINAL</span>
+    </div>
+    <div class="hud-corner hud-tr">
+      <span>ENCRYPTION: AES-256</span>
+      <div class="hud-line"></div>
+    </div>
+    <div class="hud-corner hud-bl">
+      <div class="hud-line"></div>
+      <span>SENSOR ARRAY: ONLINE</span>
+    </div>
+    <div class="hud-corner hud-br">
+      <span>RADAR SWEEP: 4.2s</span>
+      <div class="hud-line"></div>
+    </div>
+
+    <div class="scroll-indicator">
+      <span>SCROLL TO ACCESS MODULES</span>
+      <div class="scroll-arrow">↓</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 2 — ORBITAL TRACKER
+  ═══════════════════════════════════════════ -->
+  <section id="orbital" class="module-section">
+    <div class="section-header reveal-up">
+      <div class="section-tag">MODULE 01 // ORBITAL INTELLIGENCE</div>
+      <h2 class="section-title">LIVE SATELLITE<br>ORBITAL TRACKER</h2>
+      <p class="section-desc">Real-time satellite positions propagated from CelesTrak TLE data. Color-coded by mission class — navigation, reconnaissance, communications, and debris.</p>
+    </div>
+
+    <div class="orbital-layout reveal-up">
+      <div class="globe-container" id="globe-container"></div>
+
+      <div class="orbital-panel">
+        <div class="panel-header">
+          <span class="panel-tag">OBJECT DATABASE</span>
+          <span class="panel-count" id="sat-count">— OBJECTS</span>
+        </div>
+
+        <div class="filter-row">
+          <button class="filter-btn active" data-filter="all">ALL</button>
+          <button class="filter-btn" data-filter="stations">STATIONS</button>
+          <button class="filter-btn" data-filter="navigation">NAV</button>
+          <button class="filter-btn" data-filter="visual">VISUAL</button>
+        </div>
+
+        <div class="sat-list" id="sat-list">
+          <div class="sat-loading">FETCHING TLE DATA...</div>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item"><span class="legend-dot" style="background:#00f5ff"></span>Station / ISS</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ffd700"></span>Navigation / IRNSS</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ff6b35"></span>Communication</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ff2d55"></span>Debris / Unknown</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="module-detail-btn reveal-up" onclick="openModal('orbital-modal')">VIEW DETAILED ANALYSIS →</button>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 3 — DEBRIS TRACKER
+  ═══════════════════════════════════════════ -->
+  <section id="debris" class="module-section alt-section">
+    <div class="section-header reveal-up">
+      <div class="section-tag">MODULE 02 // COLLISION RISK ENGINE</div>
+      <h2 class="section-title">SPACE DEBRIS<br>THREAT ANALYSIS</h2>
+      <p class="section-desc">Probabilistic collision risk scoring across LEO/MEO debris fields. Based on DRDO ISSA methodology for space asset protection.</p>
+    </div>
+
+    <div class="debris-layout">
+      <canvas id="debris-canvas" class="reveal-up"></canvas>
+
+      <div class="debris-panel reveal-up">
+        <div class="risk-meter">
+          <div class="risk-label">CURRENT COLLISION RISK INDEX</div>
+          <div class="risk-gauge">
+            <canvas id="risk-gauge-canvas" width="200" height="110"></canvas>
+            <div class="risk-value" id="risk-value">4.7</div>
+            <div class="risk-unit">/ 10</div>
+          </div>
+          <div class="risk-level MODERATE" id="risk-level">MODERATE</div>
+        </div>
+
+        <div class="debris-stats">
+          <div class="d-stat">
+            <span class="d-stat-val" id="debris-count">23,000+</span>
+            <span class="d-stat-label">TRACKED FRAGMENTS</span>
+          </div>
+          <div class="d-stat">
+            <span class="d-stat-val" style="color:#ff6b35">847</span>
+            <span class="d-stat-label">HIGH-RISK OBJECTS</span>
+          </div>
+          <div class="d-stat">
+            <span class="d-stat-val" style="color:#ff2d55">12</span>
+            <span class="d-stat-label">CRITICAL CONJUNCTIONS</span>
+          </div>
+        </div>
+
+        <div class="conjunction-list" id="conjunction-list">
+          <!-- Populated by JS -->
+        </div>
+
+        <button class="module-detail-btn" onclick="openModal('debris-modal')">COLLISION ANALYSIS REPORT →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 4 — MISSILE TRAJECTORY
+  ═══════════════════════════════════════════ -->
+  <section id="trajectory" class="module-section">
+    <div class="section-header reveal-up">
+      <div class="section-tag">MODULE 03 // BALLISTIC ANALYSIS — RESTRICTED</div>
+      <h2 class="section-title">BALLISTIC TRAJECTORY<br>SIMULATION ENGINE</h2>
+      <p class="section-desc">Parabolic & hypersonic trajectory modeling with MRSAM intercept window calculation. Relevant to DRDO MRSAM / ASAT defence architecture.</p>
+    </div>
+
+    <div class="trajectory-layout">
+      <canvas id="trajectory-canvas" class="reveal-up"></canvas>
+
+      <div class="trajectory-panel reveal-up">
+        <div class="traj-controls">
+          <div class="control-group">
+            <label>LAUNCH SITE</label>
+            <select id="launch-site" class="ctrl-select">
+              <option value="sriharikota">SRIHARIKOTA (SDSC)</option>
+              <option value="chandipur">CHANDIPUR TEST RANGE</option>
+              <option value="pokhran">POKHRAN RANGE</option>
+              <option value="custom">CUSTOM COORDINATES</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label>TARGET DESIGNATION</label>
+            <select id="target-site" class="ctrl-select">
+              <option value="leo">LEO TARGET (400km)</option>
+              <option value="meo">MEO TARGET (2000km)</option>
+              <option value="geo">GEO TARGET (36000km)</option>
+              <option value="ballistic">BALLISTIC (1500km range)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label>VELOCITY (m/s): <span id="vel-display">3200</span></label>
+            <input type="range" id="velocity-range" min="1000" max="8000" value="3200" class="ctrl-range">
+          </div>
+          <div class="control-group">
+            <label>TRAJECTORY TYPE</label>
+            <div class="radio-row">
+              <label class="radio-opt"><input type="radio" name="traj" value="ballistic" checked> BALLISTIC</label>
+              <label class="radio-opt"><input type="radio" name="traj" value="hypersonic"> HYPERSONIC</label>
+              <label class="radio-opt"><input type="radio" name="traj" value="asat"> ASAT</label>
+            </div>
+          </div>
+          <button class="btn-primary full-width" id="launch-btn" onclick="fireMissile()">
+            ▶ SIMULATE TRAJECTORY
+          </button>
+        </div>
+
+        <div class="traj-results" id="traj-results">
+          <div class="result-row">
+            <span>APOGEE ALTITUDE</span>
+            <span id="apogee-val">—</span>
+          </div>
+          <div class="result-row">
+            <span>FLIGHT TIME</span>
+            <span id="flighttime-val">—</span>
+          </div>
+          <div class="result-row">
+            <span>MAX VELOCITY</span>
+            <span id="maxvel-val">—</span>
+          </div>
+          <div class="result-row">
+            <span>SERVER SESSION</span>
+            <span id="traj-session-id" style="color:var(--text-muted);font-size:9px">COMPUTE TO GENERATE</span>
+          </div>
+          <div class="result-row intercept">
+            <span>MRSAM INTERCEPT WINDOW</span>
+            <span id="intercept-val" style="color:#ff2d55">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 5 — MISSION CONTROL HUD
+  ═══════════════════════════════════════════ -->
+  <section id="mission" class="module-section alt-section">
+    <div class="section-header reveal-up">
+      <div class="section-tag">MODULE 04 // MISSION OPERATIONS CENTER</div>
+      <h2 class="section-title">MISSION CONTROL<br>HUD DASHBOARD</h2>
+    </div>
+
+    <div class="hud-dashboard reveal-up">
+      <!-- TOP BAR -->
+      <div class="hud-topbar">
+        <div class="hud-item">
+          <span class="hud-label">MISSION CLOCK</span>
+          <span class="hud-val mission-time" id="mission-clock">T+ 00:00:00</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">COMM STATUS</span>
+          <span class="hud-val"><span class="status-dot pulse green"></span> NOMINAL</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">ENCRYPTION</span>
+          <span class="hud-val">AES-256 ACTIVE</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">GROUND STATIONS</span>
+          <span class="hud-val" style="color:#00f5ff">7 / 7 ONLINE</span>
+        </div>
+      </div>
+
+      <!-- MAIN GRID -->
+      <div class="hud-main">
+        <!-- Radar -->
+        <div class="hud-card radar-card">
+          <div class="card-header">RADAR SWEEP — SECTOR ALPHA</div>
+          <canvas id="radar-canvas" width="280" height="280"></canvas>
+          <div class="radar-info">
+            <span>RANGE: 2000km</span>
+            <span>FREQ: 9.3GHz</span>
+          </div>
+        </div>
+
+        <!-- Telemetry Charts -->
+        <div class="hud-card chart-card">
+          <div class="card-header">SIGNAL TELEMETRY — LIVE FEED</div>
+          <canvas id="telemetry-chart"></canvas>
+        </div>
+
+        <!-- Alert Feed -->
+        <div class="hud-card alert-card">
+          <div class="card-header">
+            <span>INTELLIGENCE FEED</span>
+            <span class="card-badge">CLASSIFIED</span>
+          </div>
+          <div class="alert-feed" id="alert-feed">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="hud-card status-card">
+          <div class="card-header">SUBSYSTEM STATUS</div>
+          <div class="status-grid" id="status-grid">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Debris density chart -->
+        <div class="hud-card density-card">
+          <div class="card-header">DEBRIS DENSITY vs ALTITUDE</div>
+          <canvas id="density-chart"></canvas>
+        </div>
+
+        <!-- Satellite count -->
+        <div class="hud-card count-card">
+          <div class="card-header">CONSTELLATION OVERVIEW</div>
+          <canvas id="constellation-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       FOOTER
+  ═══════════════════════════════════════════ -->
+  <footer id="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="nav-title">ASTRAVEIL</span>
+        <span class="footer-sub">SPACE & DEFENCE SITUATIONAL AWARENESS PLATFORM</span>
+      </div>
+      <div class="footer-info">
+        <span>BUILT FOR DRDO INTERNSHIP SHOWCASE</span>
+        <span>INTEGRATED SPACE SITUATIONAL AWARENESS (ISSA)</span>
+        <span>MRSAM · ASAT · IRNSS · ISRO-DRDO JOINT PROGRAMS</span>
+      </div>
+      <div class="footer-class">
+        <span class="classified-stamp">SIMULATED DATA — EDUCATIONAL USE ONLY</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ═══════════════════════════════════════════
+       MODALS
+  ═══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal()"></div>
+
+  <!-- About Modal -->
+  <div class="modal" id="about-modal">
+    <button class="modal-close" onclick="closeModal()">✕ CLOSE</button>
+    <div class="modal-tag">MISSION BRIEF // ASTRAVEIL</div>
+    <h2 class="modal-title">PROJECT OVERVIEW</h2>
+    <div class="modal-body">
+      <p>ASTRAVEIL is a proof-of-concept Space & Defence Situational Awareness platform developed as a Level 4 internship showcase project for DRDO recruitment evaluation.</p>
+      <h3>TECHNICAL ARCHITECTURE</h3>
+      <p>Built on Three.js for 3D rendering, Globe.gl for interactive orbital visualization, and satellite.js for real-time TLE propagation. All satellite positional data is sourced live from CelesTrak's public API — the same data used by aerospace organizations worldwide.</p>
+      <h3>DRDO RELEVANCE</h3>
+      <ul>
+        <li><strong>ISSA:</strong> Integrated Space Situational Awareness — debris tracking and conjunction analysis</li>
+        <li><strong>MRSAM:</strong> Medium-Range Surface-to-Air Missile — trajectory and intercept modeling</li>
+        <li><strong>ASAT:</strong> Anti-Satellite capability — LEO target simulation</li>
+        <li><strong>IRNSS:</strong> Indian Regional Navigation Satellite System — constellation visualization</li>
+      </ul>
+      <h3>DATA SOURCES</h3>
+      <p>CelesTrak (celestrak.org) — Free public TLE data updated every 8 hours. Used by NASA, ESA, and commercial operators for collision avoidance.</p>
+    </div>
+  </div>
+
+  <!-- Orbital Detail Modal -->
+  <div class="modal" id="orbital-modal">
+    <button class="modal-close" onclick="closeModal()">✕ CLOSE</button>
+    <div class="modal-tag">MODULE 01 // ORBITAL ANALYSIS</div>
+    <h2 class="modal-title">ORBITAL MECHANICS DETAIL</h2>
+    <div class="modal-body" id="orbital-modal-body">
+      <p>Select a satellite from the tracker to view its detailed orbital parameters here.</p>
+      <div class="orbital-params" id="orbital-params-detail">
+        <div class="param-row"><span>NORAD ID</span><span id="m-norad">—</span></div>
+        <div class="param-row"><span>INCLINATION</span><span id="m-incl">—</span></div>
+        <div class="param-row"><span>ECCENTRICITY</span><span id="m-ecc">—</span></div>
+        <div class="param-row"><span>ORBITAL PERIOD</span><span id="m-period">—</span></div>
+        <div class="param-row"><span>APOGEE</span><span id="m-apogee">—</span></div>
+        <div class="param-row"><span>PERIGEE</span><span id="m-perigee">—</span></div>
+        <div class="param-row"><span>MEAN MOTION</span><span id="m-motion">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debris Modal -->
+  <div class="modal" id="debris-modal">
+    <button class="modal-close" onclick="closeModal()">✕ CLOSE</button>
+    <div class="modal-tag">MODULE 02 // COLLISION RISK ANALYSIS</div>
+    <h2 class="modal-title">CONJUNCTION DATA MESSAGE</h2>
+    <div class="modal-body">
+      <p>Collision risk is calculated using a simplified version of NASA's CARA (Conjunction Assessment Risk Analysis) methodology, adapted for educational simulation.</p>
+      <h3>RISK SCORING ALGORITHM</h3>
+      <p>Risk Index = f(relative velocity, miss distance, object cross-section, atmospheric drag coefficient). Objects within 5km miss distance at relative velocity >1km/s are flagged CRITICAL.</p>
+      <h3>HIGH-PRIORITY CONJUNCTIONS</h3>
+      <div id="modal-conjunctions"></div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
